@@ -10,6 +10,7 @@ class Binding
 public:
     Binding(pfc::string_base& var, HWND hwnd, int controlId);
     Binding(bool& var, HWND hwnd, int controlId);
+    Binding(unsigned& var, HWND hwnd, int controlId, unsigned min, unsigned max);
 
     Binding(Binding&& source) noexcept;
     Binding& operator=(Binding&& source) noexcept;

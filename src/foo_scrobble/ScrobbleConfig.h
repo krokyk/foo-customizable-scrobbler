@@ -9,6 +9,12 @@ inline constexpr char const* DefaultAlbumMapping = "[%album%]";
 inline constexpr char const* DefaultAlbumArtistMapping = "[%album artist%]";
 inline constexpr char const* DefaultTrackNumberMapping = "[%tracknumber%]";
 inline constexpr char const* DefaultMBTrackIdMapping = "[%musicbrainz_trackid%]";
+inline constexpr unsigned DefaultScrobblePercent = 50;
+inline constexpr unsigned DefaultScrobbleSeconds = 240;
+inline constexpr unsigned MinScrobblePercent = 1;
+inline constexpr unsigned MaxScrobblePercent = 100;
+inline constexpr unsigned MinScrobbleSeconds = 1;
+inline constexpr unsigned MaxScrobbleSeconds = 86400;
 
 class ScrobbleConfig : public cfg_var
 {
@@ -20,6 +26,8 @@ public:
     bool EnableNowPlaying;
     bool SubmitOnlyInLibrary;
     bool SubmitDynamicSources;
+    unsigned ScrobblePercent;
+    unsigned ScrobbleSeconds;
 
     pfc::string8 ArtistMapping;
     pfc::string8 TitleMapping;
@@ -36,7 +44,7 @@ private:
     void set_data_raw(stream_reader* p_stream, t_size p_sizehint,
                       abort_callback& p_abort) override;
 
-    static unsigned const Version = 2;
+    static unsigned const Version = 3;
 };
 
 class NOVTABLE ScrobbleConfigNotify : public service_base

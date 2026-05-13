@@ -6,6 +6,8 @@
 #include "ServiceHelper.h"
 #include "Track.h"
 
+#include <algorithm>
+
 namespace foo_scrobble
 {
 
@@ -14,14 +16,7 @@ namespace
 
 using SecondsD = std::chrono::duration<double>;
 
-#ifdef _DEBUG
-static constexpr bool IsDebug = true;
-#else
-static constexpr bool IsDebug = false;
-#endif
-
 constexpr SecondsD MinRequiredTrackLength{30.0};
-constexpr SecondsD MaxElapsedPlaytime{240.0};
 constexpr SecondsD NowPlayingMinimumPlaybackTime{3.0};
 
 class TitleformatContext
@@ -92,16 +87,16 @@ private:
 class PendingTrack : public Track
 {
 public:
-    SecondsD RequiredScrobbleTime() const
+    SecondsD RequiredScrobbleTime(ScrobbleConfig const& config) const
     {
         if (Duration <= SecondsD::zero())
             return MinRequiredTrackLength;
 
-        if constexpr (IsDebug) {
-            return std::min(Duration, SecondsD{2.0});
-        } else {
-            return std::min(Duration * 0.5, MaxElapsedPlaytime);
-        }
+        auto const percent =
+            std::clamp(config.ScrobblePercent, MinScrobblePercent, MaxScrobblePercent);
+        auto const seconds =
+            std::clamp(config.ScrobbleSeconds, MinScrobbleSeconds, MaxScrobbleSeconds);
+        return std::min(Duration * (percent / 100.0), SecondsD{seconds});
     }
 
     bool HasRequiredFields() const
@@ -111,9 +106,10 @@ public:
 
     bool IsSkipped() const { return skip_; }
 
-    bool CanScrobble(SecondsD const& playbackTime, bool logFailure = false) const
+    bool CanScrobble(SecondsD const& playbackTime, ScrobbleConfig const& config,
+                     bool logFailure = false) const
     {
-        if (playbackTime < RequiredScrobbleTime())
+        if (playbackTime < RequiredScrobbleTime(config))
             return false;
 
         if (IsSkipped()) {
@@ -373,7 +369,7 @@ unsigned int PlaybackScrobbler::get_flags()
 
 void PlaybackScrobbler::FlushCurrentTrack()
 {
-    if (isScrobbling_ && pendingTrack_.CanScrobble(accumulatedPlaybackTime_, true))
+    if (isScrobbling_ && pendingTrack_.CanScrobble(accumulatedPlaybackTime_, config_, true))
         GetScrobbleService().ScrobbleAsync(std::move(static_cast<Track&>(pendingTrack_)));
 
     accumulatedPlaybackTime_ = SecondsD::zero();

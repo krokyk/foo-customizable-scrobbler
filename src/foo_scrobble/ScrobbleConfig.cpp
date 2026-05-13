@@ -1,5 +1,7 @@
 #include "ScrobbleConfig.h"
 
+#include <algorithm>
+
 namespace foo_scrobble
 {
 
@@ -13,6 +15,8 @@ ScrobbleConfig::ScrobbleConfig()
     , EnableNowPlaying(true)
     , SubmitOnlyInLibrary(false)
     , SubmitDynamicSources(true)
+    , ScrobblePercent(DefaultScrobblePercent)
+    , ScrobbleSeconds(DefaultScrobbleSeconds)
     , ArtistMapping(DefaultArtistMapping)
     , TitleMapping(DefaultTitleMapping)
     , AlbumMapping(DefaultAlbumMapping)
@@ -39,6 +43,8 @@ void ScrobbleConfig::get_data_raw(stream_writer* p_stream, abort_callback& p_abo
     p_stream->write_string(SkipSubmissionFormat, p_abort);
 
     p_stream->write_string(SessionKey, p_abort);
+    p_stream->write_lendian_t(ScrobblePercent, p_abort);
+    p_stream->write_lendian_t(ScrobbleSeconds, p_abort);
 }
 
 void SetDataV1(ScrobbleConfig& cfg, stream_reader* p_stream, abort_callback& p_abort)
@@ -76,6 +82,13 @@ void SetDataV2(ScrobbleConfig& cfg, stream_reader* p_stream, abort_callback& p_a
     p_stream->read_string(cfg.SessionKey, p_abort);
 }
 
+void SetDataV3(ScrobbleConfig& cfg, stream_reader* p_stream, abort_callback& p_abort)
+{
+    SetDataV2(cfg, p_stream, p_abort);
+    p_stream->read_lendian_t(cfg.ScrobblePercent, p_abort);
+    p_stream->read_lendian_t(cfg.ScrobbleSeconds, p_abort);
+}
+
 void ScrobbleConfig::set_data_raw(stream_reader* p_stream, t_size /*p_sizehint*/,
                                   abort_callback& p_abort)
 {
@@ -89,7 +102,15 @@ void ScrobbleConfig::set_data_raw(stream_reader* p_stream, t_size /*p_sizehint*/
     case 2:
         SetDataV2(*this, p_stream, p_abort);
         break;
+    case 3:
+        SetDataV3(*this, p_stream, p_abort);
+        break;
     }
+
+    ScrobblePercent =
+        std::clamp(ScrobblePercent, MinScrobblePercent, MaxScrobblePercent);
+    ScrobbleSeconds =
+        std::clamp(ScrobbleSeconds, MinScrobbleSeconds, MaxScrobbleSeconds);
 
     std::pair<pfc::string8*, char const*> mappings[] = {
         {&ArtistMapping, DefaultArtistMapping},

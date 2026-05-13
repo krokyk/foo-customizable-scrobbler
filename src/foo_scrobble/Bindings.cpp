@@ -79,6 +79,41 @@ private:
     int controlId_;
 };
 
+class UnsignedBinding : public Binding::IBinding
+{
+public:
+    UnsignedBinding(unsigned& var, HWND hwnd, int controlId, unsigned min, unsigned max)
+        : var_(var)
+        , hwnd_(hwnd)
+        , controlId_(controlId)
+        , min_(min)
+        , max_(max)
+    {}
+
+    bool HasChanged() const override { return ReadValue() != var_; }
+
+    void FlowToControl() override { SetDlgItemInt(hwnd_, controlId_, var_, FALSE); }
+
+    void FlowToVar() override
+    {
+        var_ = ReadValue();
+        FlowToControl();
+    }
+
+private:
+    unsigned ReadValue() const
+    {
+        auto value = GetDlgItemInt(hwnd_, controlId_, nullptr, FALSE);
+        return std::clamp(value, min_, max_);
+    }
+
+    unsigned& var_;
+    HWND hwnd_;
+    int controlId_;
+    unsigned min_;
+    unsigned max_;
+};
+
 } // namespace
 
 Binding::Binding(pfc::string_base& var, HWND hwnd, int controlId)
@@ -87,6 +122,10 @@ Binding::Binding(pfc::string_base& var, HWND hwnd, int controlId)
 
 Binding::Binding(bool& var, HWND hwnd, int controlId)
     : binding_(std::make_unique<BoolBinding>(var, hwnd, controlId))
+{}
+
+Binding::Binding(unsigned& var, HWND hwnd, int controlId, unsigned min, unsigned max)
+    : binding_(std::make_unique<UnsignedBinding>(var, hwnd, controlId, min, max))
 {}
 
 Binding::Binding(Binding&&) noexcept = default;
